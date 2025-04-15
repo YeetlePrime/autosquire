@@ -11,7 +11,6 @@ use evdev as ed;
 type EventBuffer = Arc<(Mutex<VecDeque<InputEvent>>, Condvar)>;
 
 pub struct WaylandListener {
-    // notify the listen function that a new event occured
     should_kill_threads: Arc<AtomicBool>,
     event_buffer: EventBuffer,
     thread_handles: Vec<thread::JoinHandle<()>>,
@@ -56,6 +55,13 @@ impl InputListener for WaylandListener {
     }
 }
 
+impl Drop for WaylandListener {
+    fn drop(&mut self) {
+        self.should_kill_threads
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 static SLEEP_INTERVAL: Duration = Duration::from_millis(10);
 
 fn spawn_listener_thread(
@@ -78,5 +84,7 @@ fn spawn_listener_thread(
                 thread::sleep(SLEEP_INTERVAL);
             }
         }
+
+        println!("Stop thread for {}", device.name().unwrap_or("Unknown"));
     })
 }
